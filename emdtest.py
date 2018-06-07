@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from readdata import read as rd
 from pyhht.emd import EMD
 from termcolor import *
+#this pakage useless
 path = "/home/bwei/PycharmProjects/EMDtest/long wind"
 windset = rd(path)
 name = []

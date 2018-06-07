@@ -1,7 +1,7 @@
 import os
 from scipy import io
 
-
+#use to read files
 def read(path):
     data = {}
     files = os.listdir(path)

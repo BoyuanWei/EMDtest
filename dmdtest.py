@@ -9,7 +9,7 @@ name = raw_input('the name of data set?')
 realwindset = windset[name]
 realwindset.shape = (len(realwindset),)
 x = np.linspace(1, len(realwindset), len(realwindset))
-hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=400).fit(realwindset)
+hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=300).fit(realwindset)
 hodmd.reconstructed_data.shape
 hodmd.plot_eigs()
 hodmd.original_time['dt'] = hodmd.dmd_time['dt'] = x[1] - x[0]

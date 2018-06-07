@@ -16,7 +16,7 @@ while name != 00000:
             composite = raw_input('which orders?')
             composite = [n for n in composite.split(',')]
             if 'f' in composite:
-                composite = np.arange(int(composite[1]), int(composite[2]), (abs(int(composite[2])-int(composite[1]))+1)*int(composite[1])/int(composite[1]))
+                composite = np.arange(int(composite[1]), int(composite[2]), abs(int(composite[1]))/int(composite[1]))
             else:
                 int(composite)
             newsignal = np.sum(imfs[composite], axis=0)
