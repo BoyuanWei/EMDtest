@@ -15,8 +15,10 @@ while name != 00000:
         if 'imfs' in locals():
             composite = raw_input('which orders?')
             composite = [n for n in composite.split(',')]
-            if 'from' in composite:
-            composite = int(np.linspace(composite(1),composite(2), )
+            if 'f' in composite:
+                composite = np.arange(int(composite[1]), int(composite[2]), (abs(int(composite[2])-int(composite[1]))+1)*int(composite[1])/int(composite[1]))
+            else:
+                int(composite)
             newsignal = np.sum(imfs[composite], axis=0)
             plt.figure()
             plt.plot(x, newsignal)
