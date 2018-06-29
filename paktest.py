@@ -13,12 +13,12 @@ while name != 00000:
         break
     if name == 'composite': # to composite the imfs after a EMD
         if 'imfs' in locals():
-            composite = raw_input('which orders?')
+            composite = raw_input('which orders? or range, use positive orders')
             composite = [n for n in composite.split(',')]
             if 'f' in composite:
-                composite = np.arange(int(composite[1]), int(composite[2]), abs(int(composite[1]))/int(composite[1]))
+                composite = np.arange(int(composite[1])-1, int(composite[2]), 1)
             else:
-                int(composite)
+                composite = np.array(map(int, composite))
             newsignal = np.sum(imfs[composite], axis=0)
             plt.figure()
             plt.plot(x, newsignal)
@@ -37,8 +37,8 @@ while name != 00000:
             hodmd.original_time['t0'] = hodmd.dmd_time['t0'] = x[0]
             hodmd.original_time['tend'] = hodmd.dmd_time['tend'] = x[-1]
             #draw
-            plt.plot(hodmd.original_timesteps, newsignal, '.', label='realwindset')
-            plt.plot(hodmd.original_timesteps, newsignal, '-', label='original function')
+
+
             plt.plot(hodmd.dmd_timesteps, hodmd.reconstructed_data[0].real, '--', label='DMD output')
             plt.legend()
             plt.show()
@@ -48,7 +48,9 @@ while name != 00000:
                 hodmd.dmd_time['tend'] = int(tendlength)
                 fig = plt.figure(figsize=(15, 5))
                 plt.plot(hodmd.original_timesteps, newsignal, '.', label='snapshots')
-                plt.plot(x, newsignal, '-', label='original function')
+                if 'windsetoriginal' in locals():
+                    y = np.linspace(1, len(windsetoriginal), len(windsetoriginal))
+                    plt.plot(y, windsetoriginal, '-', label='the practical signal')
                 plt.plot(hodmd.dmd_timesteps, hodmd.reconstructed_data[0].real, '--', label='DMD output')
                 plt.legend()
                 plt.show()
@@ -81,10 +83,14 @@ while name != 00000:
     if name not in windset.keys():# in case the user give some wrong names
         print(colored('This dataset is not exist', 'red'))
         continue
-    cut = raw_input('Cut the zeros head and end?[y/n]') # an option to cut the zero zones in the dataset
+    cut = raw_input('Cut the zeros head and end?[y/n] or from somewhere?[from]') # an option to cut the zero zones in the dataset
     if cut == 'y':
         cutindex = [np.nonzero(windset[name])[0][0], np.nonzero(windset[name])[0][-1]]
         realwindset = windset[name][cutindex[0]:cutindex[1]+1]
+    elif cut == 'from':
+        cutfrom = raw_input('from where?')
+        windsetoriginal = windset[name]
+        realwindset = windset[name][0:int(cutfrom)]
     else:
         realwindset = windset[name]
     x = np.linspace(1, len(realwindset), len(realwindset))
