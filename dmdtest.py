@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from readdata import read as rd
 from pydmd import HODMD
+#just test
 path = "/home/bwei/PycharmProjects/data lib/long wind"
 windset = rd(path)
 name = raw_input('the name of data set?')
