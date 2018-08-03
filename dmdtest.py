@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from readdata import read as rd
 from pydmd import HODMD
-from termcolor import *
 path = "/home/bwei/PycharmProjects/data lib/long wind"
 windset = rd(path)
 name = raw_input('the name of data set?')
