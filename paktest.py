@@ -4,7 +4,7 @@ from readdata import read as rd
 from PyEMD import EMD
 from termcolor import *
 from pydmd import HODMD
-path = "/home/bwei/PycharmProjects/EMDtest/long wind"# the folder path of data
+path = "/home/bwei/PycharmProjects/data lib/long wind"# the folder path of data
 windset = rd(path)
 name = []
 while name != 00000:

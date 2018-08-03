@@ -4,7 +4,7 @@ from readdata import read as rd
 from pyhht.emd import EMD
 from termcolor import *
 #this pakage useless
-path = "/home/bwei/PycharmProjects/EMDtest/long wind"
+path = "/home/bwei/PycharmProjects/data lib/long wind"
 windset = rd(path)
 name = []
 while name != 00000:
