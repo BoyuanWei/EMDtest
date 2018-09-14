@@ -13,7 +13,7 @@ while name != 00000:
         break
     if name == 'composite': # to composite the imfs after a EMD
         if 'imfs' in locals():
-            composite = raw_input('which orders? or range, use positive orders')
+            composite = raw_input('which orders? or range(use lick "f,a,b". or use positive orders which starts from 0')
             composite = [n for n in composite.split(',')]
             if 'f' in composite:
                 composite = np.arange(int(composite[1])-1, int(composite[2]), 1)
