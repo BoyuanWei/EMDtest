@@ -10,11 +10,12 @@ import plotcheck
 #path = "/home/bwei/PycharmProjects/data lib/long wind"
 #windset = rd(path)
 #name = raw_input('the name of data set?')
-x = np.linspace(0, 10, 64)
+x = np.linspace(0, 30, 128)
 realwindset = fuc(x)
 realwindset.shape = (len(realwindset),)
+realwindset = realwindset + np.random.rand(128)
 #x = np.linspace(1, len(realwindset), len(realwindset))
-hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=28).fit(realwindset)
+hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=58).fit(realwindset)
 hodmd.reconstructed_data.shape
 hodmd.plot_eigs()
 hodmd.original_time['dt'] = hodmd.dmd_time['dt'] = x[1] - x[0]

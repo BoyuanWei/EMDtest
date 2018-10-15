@@ -12,9 +12,9 @@ errorvector = []
 #some new toys:
 
 def fuc(x):
-    fucresult = np.cos(x)*np.sin(np.cos(x))+np.cos(x*.2)*np.sin(x)+x*(25-x)/100
+    fucresult = np.cos(x)*np.sin(np.cos(x))+np.cos(x*.2)*np.sin(x)+np.cos(x/np.cos(x)+x/5)
     return fucresult
-x = np.linspace(0, 10, 64)
+x = np.linspace(0, 10, 128)
 realwindset = fuc(x)
 # toy end
 
