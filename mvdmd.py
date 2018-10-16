@@ -14,6 +14,7 @@ path = "/home/bwei/PycharmProjects/data lib/pvtotal.csv"
 #windset = rd(path)
 #name = raw_input('the name of data set?')
 #realwindset = windset[name]
+pointsperday = 288 # CHANGE HERE FOR DIFFERENT RESOLUTION
 realwindset = readcsv.rd(path)
 windsetoriginal= realwindset
 realwindset.shape = (len(realwindset),)
@@ -45,31 +46,45 @@ dmddataset = np.array(dmddataset)
 hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=288).fit(dmddataset)
 hodmd.reconstructed_data.shape
 hodmd.plot_eigs()
-#------------CHANGE HERE IF THE RESOLUTION IS DIFFERENT!!
-hodmd.dmd_time['tend'] = (days+1)*288
-#------------CHANGE HERE IF THE RESOLUTION IS DIFFERENT!!
+hodmd.dmd_time['tend'] = (days+1)*pointsperday
+
+#----one pic about the with DMD one
 fig = plt.figure(figsize=(15, 5))
-plt.plot(hodmd.original_timesteps+cut-days*288, dmddataset, '.', label='snapshots')
-data_practical = windsetoriginal[cut+hodmd.dmd_timesteps-days*288]
+plt.plot(hodmd.original_timesteps+cut-days*pointsperday, dmddataset, '.', label='snapshots')
+data_practical = windsetoriginal[cut+hodmd.dmd_timesteps-days*pointsperday]
 data_prediction = hodmd.reconstructed_data[0].real
-plt.plot(cut+hodmd.dmd_timesteps-days*288, data_practical, '-', label='the practical signal')
-#plt.plot(cut+hodmd.dmd_timesteps-days*288, data_prediction, '--', label='DMD output')
-plt.vlines(cut, 0, 20,colors="black", linestyles="--")
-plt.plot(cut+np.linspace(1, 288, 288, dtype='int'), dmddataset_org[-1], '.-', label='ema simple forecast')
+#----some special correction on the decomposition-----
+zeroindex = np.where(dmddataset_org[-1] <= 0.01)[0]
+data_prediction[days*pointsperday+zeroindex] = dmddataset_org[-1][zeroindex]
+#-----special correction is done--------------
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='orange')
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_prediction, '--', label='DMD output', color='green')
+plt.vlines(cut, 0, 20, colors="black", linestyles="--")
+plt.legend()
+plt.show()
+
+#-----another pic on without DMD-----
+
+plt.figure(figsize=(15, 5))
+#plt.plot(hodmd.original_timesteps+cut-days*pointsperday, dmddataset, '.', label='snapshots')
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='orange')
+plt.vlines(cut, 0, 20, colors="black", linestyles="--")
+plt.plot(cut+np.linspace(1, pointsperday, pointsperday, dtype='int'), dmddataset_org[-1], '--', label='ema simple forecast', color='green')
 plt.legend()
 plt.show()
 
 
+
 #Start the error evaluation section from here(:
-print(colored('Error evaluation for with DMD:', 'green'))
-data_prediction_eva = data_prediction[-288:]
-data_practical_eva = data_practical[-288:]
+print(colored('------Error evaluation for with DMD:------', 'green'))
+data_prediction_eva = data_prediction[-pointsperday:]
+data_practical_eva = data_practical[-pointsperday:]
 ev_result = ev(data_prediction_eva, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
 
 #Start the error evaluation section from here(:
-print(colored('Error evaluation for without DMD:', 'green'))
+print(colored('------Error evaluation for without DMD:------', 'green'))
 data_prediction_eva = dmddataset_org[-1]
 ev_result = ev(data_prediction_eva, data_practical_eva)
 for key in ev_result:
