@@ -1,4 +1,5 @@
 # a pak to give the evaluation to the regression
+# also a pak to give "prediction" on the random parts
 import numpy as np
 from math import sqrt
 
@@ -44,3 +45,17 @@ def ev(data_prediction_eva, data_practical_eva):
     evaluations['Practical data Variance'] = sum(targetDeviation) / len(targetDeviation)
     evaluations['Practical data Standard Deviation'] = sqrt(sum(targetDeviation) / len(targetDeviation))
     return evaluations
+
+def randomextract(data_origin, data_ema, points_per_day=288):
+    days = len(data_ema)
+    differ = []
+    differset = []
+    usefuldata = data_origin[-points_per_day*days:]
+    for loop in np.arange(points_per_day):
+        for n in np.arange(days):
+            differ.append(usefuldata[loop+n*points_per_day]-data_ema[n][loop])
+        differset.append(np.array(differ))
+        differ = []
+    return differset
+
+

@@ -8,7 +8,9 @@ import numpy as np
 import readcsv
 from math import sqrt
 from evaluation import ev as ev
+from evaluation import randomextract as re
 import termcolor
+from plotcheck import pl
 
 path = "/home/bwei/PycharmProjects/data lib/pvtotal.csv"
 #windset = rd(path)
@@ -30,7 +32,7 @@ if mvamode == 'ema':
             onedaydata = onedaydata*(1-alpha)+alpha*data[len(data)-points_covered+points_per_day*(loop+1):
                                                          len(data)-points_covered+points_per_day*(loop+1)+points_per_day]
             daysdata.append(onedaydata)
-        return daysdata[-days_to_keep:]
+        return daysdata[-days_to_keep:], daysdata
 else:
     pass#to be done
 
@@ -38,7 +40,8 @@ else:
 days = input('how many days will be generated for forecasting?')
 cut = input('from where the rest will be testing set?<'+str(len(realwindset)))
 madataset = realwindset[:cut]
-dmddataset_org = ma(madataset, days)
+maresult = ma(madataset, days)
+dmddataset_org = maresult[0]
 dmddataset = []
 for n in np.arange(len(dmddataset_org)):
     dmddataset.extend(dmddataset_org[n])
@@ -57,8 +60,8 @@ data_prediction = hodmd.reconstructed_data[0].real
 zeroindex = np.where(dmddataset_org[-1] <= 0.01)[0]
 data_prediction[days*pointsperday+zeroindex] = dmddataset_org[-1][zeroindex]
 #-----special correction is done--------------
-plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='orange')
-plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_prediction, '--', label='DMD output', color='green')
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='g')
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_prediction, '--', label='DMD output', color='r')
 plt.vlines(cut, 0, 20, colors="black", linestyles="--")
 plt.legend()
 plt.show()
@@ -67,11 +70,19 @@ plt.show()
 
 plt.figure(figsize=(15, 5))
 #plt.plot(hodmd.original_timesteps+cut-days*pointsperday, dmddataset, '.', label='snapshots')
-plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='orange')
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='g')
 plt.vlines(cut, 0, 20, colors="black", linestyles="--")
-plt.plot(cut+np.linspace(1, pointsperday, pointsperday, dtype='int'), dmddataset_org[-1], '--', label='ema simple forecast', color='green')
+plt.plot(cut+np.linspace(1, pointsperday, pointsperday, dtype='int'), dmddataset_org[-1], '--', label='ema simple forecast', color='r')
 plt.legend()
 plt.show()
+
+#---just some testing pic-----
+plt.figure(figsize=(15, 5))
+plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical-data_prediction, '--', label='DMD output', color='r')
+plt.vlines(cut, 0, 20, colors="black", linestyles="--")
+plt.legend()
+plt.show()
+
 
 
 
@@ -89,3 +100,5 @@ data_prediction_eva = dmddataset_org[-1]
 ev_result = ev(data_prediction_eva, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
+
+differset = re(madataset, maresult[1])
