@@ -2,6 +2,8 @@
 # also a pak to give "prediction" on the random parts
 import numpy as np
 from math import sqrt
+from PyEMD import EMD
+import matplotlib.pyplot as plt
 
 def ev(data_prediction_eva, data_practical_eva):
     evaluations = {}
@@ -57,5 +59,21 @@ def randomextract(data_origin, data_ema, points_per_day=288):
         differset.append(np.array(differ))
         differ = []
     return differset
+
+def doemd(data):
+    emd = EMD()
+    imfs = emd(data)
+    size = imfs.shape
+    x = np.linspace(1, len(data), len(data))
+    plt.figure()
+    plt.plot(x, data, marker='.', markerfacecolor='blue', markersize=10)
+    plt.show()
+    plt.figure(figsize=(20, 18))
+    for loop in range(1, size[0] + 1):
+        plt.subplot(size[0], 1, loop)
+        plt.plot(x, imfs[loop - 1], marker='.', markerfacecolor='blue', markersize=10)
+        plt.hlines(0, 0, len(data), colors="black", linestyles="--")
+        plt.title(loop)
+    plt.show()
 
 

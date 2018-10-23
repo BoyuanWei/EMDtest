@@ -1,7 +1,6 @@
 # moving average on historical data and then do the dmd, hope it works
 import matplotlib.pyplot as plt
 from readdata import read as rd
-from PyEMD import EMD
 from termcolor import *
 from pydmd import HODMD
 import numpy as np
@@ -9,6 +8,7 @@ import readcsv
 from math import sqrt
 from evaluation import ev as ev
 from evaluation import randomextract as re
+from evaluation import doemd as emd
 import termcolor
 from plotcheck import pl
 
@@ -78,6 +78,7 @@ plt.show()
 
 #---just some testing pic-----
 plt.figure(figsize=(15, 5))
+testdata = data_practical-data_prediction
 plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical-data_prediction, '--', label='DMD output', color='r')
 plt.vlines(cut, 0, 20, colors="black", linestyles="--")
 plt.legend()
@@ -102,3 +103,4 @@ for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
 
 differset = re(madataset, maresult[1])
+
