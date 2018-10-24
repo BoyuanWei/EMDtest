@@ -8,7 +8,7 @@ import readcsv
 from math import sqrt
 from evaluation import ev as ev
 from evaluation import randomextract as re
-from evaluation import doemd as emd
+from evaluation import pointprediction as pp
 import termcolor
 from plotcheck import pl
 
