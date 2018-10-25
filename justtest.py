@@ -1,7 +1,7 @@
 import numpy as np
 import readcsv
 import plotcheck as pc
-aaa = np.array([1,2,3,4,5,6])
+aaa = np.array([1,2,3,4,5,6,8])
 bbb = np.array([2,10,4,5,12,7])
 ccc = np.array([3,4,5,6,7,8])
 

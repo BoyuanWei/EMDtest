@@ -87,7 +87,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
         extrema_lower_index_vector = []
         for n in np.arange(nimfs): # try to figure out the trend and give prediction
             #---------wash the extremas----------------------------------------------------
-            extrema_upper_index = extrema(imfs[n], np.greater_equal) # max extrema
+            extrema_upper_index = extrema(imfs[n], np.greater_equal)[0] # max extrema
             neighbours = []
             for i in np.arange(len(extrema_upper_index)-1): # clean the indexes which close to each other
                 if extrema_upper_index[i]-extrema_upper_index[i+1] == -1:
@@ -97,7 +97,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                                                                           (extrema_upper_index == len(imfs[n])-1)))
             neighbours = []
 
-            extrema_lower_index = extrema(imfs[n], np.less_equal)# min exrema
+            extrema_lower_index = extrema(imfs[n], np.less_equal)[0]# min exrema
             for i in np.arange(len(extrema_lower_index)-1): # clean the indexes which close to each other
                 if extrema_lower_index[i]-extrema_lower_index[i+1] == -1:
                     neighbours.append(i)
@@ -109,7 +109,13 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                 extrema_lower_index_vector.append(extrema_lower_index)
 
             #------------------------ the derivation starts from here---------------------
-
+            extremas = np.unique(np.hstack([extrema_upper_index, extrema_lower_index]))
+            if extremas.any():
+                last_extrema = extremas[-1]
+            else:
+                last_extrema = len(imfs[n])-1
+            if imfs[n][last_extrema]*imfs[n][-1]<=0:# if the last point has already crossed the axis
+                print n
 
             #-------------------------the derivation is done------------------------------
 
