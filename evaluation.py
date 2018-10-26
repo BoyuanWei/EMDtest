@@ -85,6 +85,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
         nimfs = len(imfs)
         extrema_upper_index_vector = []# record, make no sense
         extrema_lower_index_vector = []
+        forecast_value_vector = []
         for n in np.arange(nimfs): # try to figure out the trend and give prediction
             #---------wash the extremas----------------------------------------------------
             extrema_upper_index = extrema(imfs[n], np.greater_equal)[0] # max extrema
@@ -109,13 +110,47 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                 extrema_lower_index_vector.append(extrema_lower_index)
 
             #------------------------ the derivation starts from here---------------------
+                    #--some basic calculations --------#
+            extrema_upper_value = imfs[n][extrema_upper_index]
+            extrema_lower_value = imfs[n][extrema_lower_index]
             extremas = np.unique(np.hstack([extrema_upper_index, extrema_lower_index]))
             if extremas.any():
                 last_extrema = extremas[-1]
             else:
                 last_extrema = len(imfs[n])-1
-            if imfs[n][last_extrema]*imfs[n][-1]<=0:# if the last point has already crossed the axis
-                print n
+
+            if len(extrema_upper_index)+len(extrema_lower_index) <= 0: # if there is no real extrema
+                distance = last_extrema #means that there is no enough extremas to do the calculation
+                amplitude_upper_ema = max(imfs[n])
+                amplitude_lower_ema = min(imfs[n])
+                step = abs(amplitude_upper_ema-amplitude_lower_ema)/distance
+                reference_amplitude = abs(imfs[n][-1])+2*step
+            elif len(extrema_upper_index)+len(extrema_lower_index) == 1:# if there is only one extrema
+                distance = len(imfs[n])-last_extrema
+                amplitude_upper_ema = max(imfs[n][last_extrema], imfs[n][-1])
+                amplitude_lower_ema = min(imfs[n][last_extrema], imfs[n][-1])
+                step = abs(amplitude_upper_ema-amplitude_lower_ema)/distance
+                reference_amplitude = abs(imfs[n][-1]) + 2 * step
+            else:
+                amplitude_upper_ema = ema(extrema_upper_value, alpha=0.6)
+                amplitude_lower_ema = ema(extrema_lower_value, alpha=0.6)
+                nextremas = min(len(extrema_lower_index), len(extrema_upper_index))
+                distance_set = abs(extrema_upper_index[-nextremas:]-extrema_lower_index[-nextremas:])
+                distance = ema(distance_set, alpha=0.6)
+                step = abs(amplitude_upper_ema - amplitude_lower_ema) / distance
+                reference_amplitude = abs(amplitude_lower_ema) * 0.25 + abs(amplitude_upper_ema) * 0.25 + abs(
+                    imfs[n][last_extrema]) * 0.5
+        # do the rough forecast from here:
+
+            if imfs[n][last_extrema]*imfs[n][-1] < 0:# if the last point has already crossed the axis
+                if abs(imfs[n][-1])+step > reference_amplitude:
+                    forecast_value = imfs[n][-1]/abs(imfs[n][-1])*reference_amplitude
+                else:
+                    forecast_value = imfs[n][-1]/abs(imfs[n][-1])*(abs(imfs[n][-1])+step)
+            else:# imfs[n][last_extrema]*imfs[n][-1] >= 0:
+                forecast_value = imfs[n][-1]-step*imfs[n][-1]/abs(imfs[n][-1])
+            forecast_value_vector.append(forecast_value)
+
 
             #-------------------------the derivation is done------------------------------
 
@@ -144,11 +179,18 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                         marker='+', s=50)
             plt.scatter(extrema_lower_index_vector[loop-1], imfs[loop-1][extrema_lower_index_vector[loop-1]], marker='+',
                         color='green', s=50)
+            plt.scatter(x[-1]+1, forecast_value_vector[loop-1], marker='o', c='black', s=50)
             plt.hlines(0, 0, len(differsets[0]), colors="black", linestyles="--")
             plt.title(loop)
         plt.show()
 
     return extrema_upper_index_vector, extrema_lower_index_vector
+
+def ema(data, alpha): #simple function to give a ema as u want
+        emaresult = data[0]
+        for n in np.arange(len(data)-1):
+            emaresult = emaresult*(1-alpha)+alpha*data[n+1]
+        return emaresult
 
 
 
