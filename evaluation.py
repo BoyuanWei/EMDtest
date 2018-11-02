@@ -80,6 +80,7 @@ def drawemd(data): # draw the pictures of the emd.
 
 def pointprediction(differsets, draw=0): # forecast the next differ of members in differsets
     emd = EMD()
+    forecast_result = []
     for loop in np.arange(len(differsets)):
         imfs = emd(differsets[loop]) # do the EMD
         nimfs = len(imfs)
@@ -141,25 +142,30 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                 reference_amplitude = abs(amplitude_lower_ema) * 0.25 + abs(amplitude_upper_ema) * 0.25 + abs(
                     imfs[n][last_extrema]) * 0.5
         # do the rough forecast from here:
+            if n >= np.floor(nimfs/2):
+                step = abs(imfs[n][-1]-imfs[n][-2])
 
             if imfs[n][last_extrema]*imfs[n][-1] < 0:# if the last point has already crossed the axis
-                if abs(imfs[n][-1])+step > reference_amplitude:
-                    forecast_value = imfs[n][-1]/abs(imfs[n][-1])*reference_amplitude
+                if distance <= 1.58: # have to switch the direction
+                    forecast_value = imfs[n][-1]-imfs[n][-1]/abs(imfs[n][-1])*step
                 else:
-                    forecast_value = imfs[n][-1]/abs(imfs[n][-1])*(abs(imfs[n][-1])+step)
-            else:# imfs[n][last_extrema]*imfs[n][-1] >= 0:
-                forecast_value = imfs[n][-1]-step*imfs[n][-1]/abs(imfs[n][-1])
+                    if abs(imfs[n][-1])+step > reference_amplitude:
+                        forecast_value = imfs[n][-1]/abs(imfs[n][-1])*reference_amplitude
+                    else:
+                        forecast_value = imfs[n][-1]/abs(imfs[n][-1])*(abs(imfs[n][-1])+step)
+            elif imfs[n][-1]-imfs[n][-2] == 0:
+                forecast_value = 0 #give up the forecast
+            else:
+                if distance < 1.1: #means have a more often switch
+                    forecast_value = imfs[n][-1] - step * (imfs[n][-1] - imfs[n][-2]) / abs((imfs[n][-1] - imfs[n][-2])) #change the direction
+                else:
+                    forecast_value = imfs[n][-1]+step*(imfs[n][-1]-imfs[n][-2])/abs((imfs[n][-1]-imfs[n][-2])) # continue with the trend
+
             forecast_value_vector.append(forecast_value)
+        forecast_result.append((sum(forecast_value_vector)))
 
 
             #-------------------------the derivation is done------------------------------
-
-
-
-
-        #---------------wash done-----------------------------------------------
-            extrema_upper_value = imfs[n][extrema_upper_index]
-            extrema_lower_value = imfs[n][extrema_lower_index]
 
 
 
@@ -184,7 +190,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
             plt.title(loop)
         plt.show()
 
-    return extrema_upper_index_vector, extrema_lower_index_vector
+    return forecast_result
 
 def ema(data, alpha): #simple function to give a ema as u want
         emaresult = data[0]

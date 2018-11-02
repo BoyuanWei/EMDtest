@@ -13,7 +13,7 @@ import plotcheck
 x = np.linspace(0, 30, 128)
 realwindset = fuc(x)
 realwindset.shape = (len(realwindset),)
-realwindset = realwindset + np.random.rand(128)
+#realwindset = realwindset + np.random.rand(128)
 #x = np.linspace(1, len(realwindset), len(realwindset))
 hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=58).fit(realwindset)
 hodmd.reconstructed_data.shape
