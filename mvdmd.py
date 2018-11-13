@@ -9,6 +9,13 @@ from math import sqrt
 from evaluation import ev as ev
 from evaluation import randomextract as re
 from evaluation import pointprediction as pp
+from evaluation import dmddiffer as dd
+from evaluation import egp
+from evaluation import gp_prediction as gpp
+from evaluation import gaojier
+from evaluation import datawash
+from evaluation import directions as di
+from evaluation import gp
 import termcolor
 from plotcheck import pl
 
@@ -102,21 +109,24 @@ ev_result = ev(data_prediction_eva, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
 
-differset = re(madataset, maresult[1]) # calculate the differences between ema results and practical data
+dmd_difference_set = dd(maresult[1], days)
+differset = re(madataset, dmd_difference_set) # calculate the differences between ema results and practical data
+differset = datawash(differset)
 debug_flag = 0 # set this to another number if want to fix the error forecast algorithm
 if debug_flag == 0:
-    error_forecast = np.array(pp(differset)) # get the error forecast
+    error_forecast = np.array(gpp(differset)) # get the error forecast
+    error_forecast = di(error_forecast)
     fig = plt.figure(figsize=(20, 10))
     plt.plot(hodmd.original_timesteps + cut - days * pointsperday, dmddataset, '.', label='snapshots')
     data_practical = windsetoriginal[cut + hodmd.dmd_timesteps - days * pointsperday]
     data_prediction = hodmd.reconstructed_data[0].real
     data_predicion_org = hodmd.reconstructed_data[0].real
+    data_prediction[-pointsperday:] = data_prediction[-pointsperday:] + error_forecast
     # ----some special correction on the decomposition-----
     zeroindex = np.where(dmddataset_org[-1] <= 0.01)[0]
     data_prediction[days * pointsperday + zeroindex] = dmddataset_org[-1][zeroindex]
     # -----special correction is done--------------
     #data_predicion_org = data_prediction[:]
-    data_prediction[-pointsperday - 1:-1] = data_prediction[-pointsperday:] + error_forecast
     plt.plot(cut + hodmd.dmd_timesteps - days * pointsperday, data_practical, '-', label='the practical signal',
              color='g')
     plt.plot(cut + hodmd.dmd_timesteps - days * pointsperday, data_prediction, '--', label='DMD output', color='r')
@@ -154,6 +164,10 @@ if debug_flag == 0:
     ev_result = ev(data_prediction_eva, data_practical_eva)
     for key in ev_result:
         print '%s: %s' % (key, ev_result[key])
+#test = dd(maresult[1], days, )
+
+
+# do some gpr stuff here:
 
 
 
