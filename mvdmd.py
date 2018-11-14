@@ -15,6 +15,7 @@ from evaluation import gp_prediction as gpp
 from evaluation import gaojier
 from evaluation import datawash
 from evaluation import directions as di
+from evaluation import percents
 from evaluation import gp
 import termcolor
 from plotcheck import pl
@@ -112,9 +113,15 @@ for key in ev_result:
 dmd_difference_set = dd(maresult[1], days)
 differset = re(madataset, dmd_difference_set) # calculate the differences between ema results and practical data
 differset = datawash(differset)
-debug_flag = 0 # set this to another number if want to fix the error forecast algorithm
+debug_flag = 1 # set this to another number if want to fix the error forecast algorithm
+if debug_flag == 1: #rate mode
+    error_forecast = np.array(gaojier(differset))
+    realerror = data_practical[-pointsperday:]-data_prediction[-pointsperday:]
+    succ_rate = percents(error_forecast, realerror, data_prediction[-pointsperday:])
+    print 'the success rate is: %s' % succ_rate[0]
+
 if debug_flag == 0:
-    error_forecast = np.array(gpp(differset)) # get the error forecast
+    error_forecast = np.array(pp(differset)) # get the error forecast
     error_forecast = di(error_forecast)
     fig = plt.figure(figsize=(20, 10))
     plt.plot(hodmd.original_timesteps + cut - days * pointsperday, dmddataset, '.', label='snapshots')

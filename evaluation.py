@@ -1,5 +1,6 @@
 # a pak to give the evaluation to the regression
 # also a pak to give "prediction" on the random parts
+from __future__ import division
 import numpy as np
 from math import sqrt
 from PyEMD import EMD
@@ -287,9 +288,21 @@ def datawash(differset): #wash the data, remove outliers
     return differset
 
 def directions(data):# make only the directions work for forecast results
-    data[np.where(data>0)] = 0.1
-    data[np.where(data<0)] = -0.1
+    data[np.where(data > 0)] = 0.1
+    data[np.where(data < 0)] = -0.1
     return data
+
+def percents(forecasterror, realerror, forecast): # to see the correction rate of the forecast
+    zeros = np.where(forecast == 0)
+    forecasterror[np.where(forecasterror > 0)] = 1
+    forecasterror[np.where(forecasterror < 0)] = -1
+    realerror[np.where(realerror > 0)] = -1
+    realerror[np.where(realerror < 0)] = 1
+    trial = forecasterror+realerror
+    success = np.array(np.where(trial == 0))
+    rate = len(success[0])/(len(realerror)-len(zeros[0]))
+    return rate, trial
+
 
 
 
