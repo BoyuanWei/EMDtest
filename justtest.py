@@ -6,7 +6,6 @@ from matplotlib import pyplot as plt
 aaa = np.array([1,2,3,4,5,6,8,19,30])
 bbb = np.array([2,10,4,5,12,7])
 ccc = np.array([3,4,5,6,7,8])
-
 imfs = np.array([])
 kkkk = np.array([aaa, bbb, ccc])
 
@@ -18,3 +17,4 @@ DownLimit = Percentile[1]-IQR*1.5
 
 aaa[np.where(aaa>UpLimit)]=UpLimit
 
+avvv=[{}]*3

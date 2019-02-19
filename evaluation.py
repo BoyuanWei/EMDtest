@@ -10,6 +10,9 @@ from pydmd import HODMD
 import GPy
 from pyramid.arima import auto_arima
 from IPython.display import display
+from scipy import stats
+
+from sklearn.linear_model import BayesianRidge, LinearRegression
 
 def ev(data_prediction_eva, data_practical_eva): #see the accuracy
     evaluations = {}
@@ -86,16 +89,22 @@ def drawemd(data): # draw the pictures of the emd.
 def pointprediction(differsets, draw=0): # forecast the next differ of members in differsets
     emd = EMD()
     forecast_result = []
+    imfset = []
+    imfsumset = []
     for loop in np.arange(len(differsets)):
         imfs = emd(differsets[loop]) # do the EMD
         nimfs = len(imfs)
+        imfset.append(imfs[0])
         extrema_upper_index_vector = []# record, make no sense
         extrema_lower_index_vector = []
         forecast_value_vector = []
-        for n in np.arange(nimfs): # try to figure out the trend and give prediction
+        imfsums = []
+        for n in np.arange(nimfs):
+            # try to figure out the trend and give prediction
             #---------wash the extremas----------------------------------------------------
             extrema_upper_index = extrema(imfs[n], np.greater_equal)[0] # max extrema
             neighbours = []
+            imfsums.append(np.sum(imfs[n]))
             for i in np.arange(len(extrema_upper_index)-1): # clean the indexes which close to each other
                 if extrema_upper_index[i]-extrema_upper_index[i+1] == -1:
                     neighbours.append(i)
@@ -157,6 +166,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
                     if abs(forecast_value) >= abs(imfs[n][last_extrema])*1.1:
                         forecast_value = abs(imfs[n][last_extrema])*1.1*(-abs(imfs[n][-1])/imfs[n][-1])
             forecast_value_vector.append(forecast_value)
+        imfsumset.append(imfsums)
         forecast_result.append((sum(forecast_value_vector)))
 
 
@@ -186,7 +196,7 @@ def pointprediction(differsets, draw=0): # forecast the next differ of members i
         plt.show()
         return forecast_value_vector, forecast_result
 
-    return forecast_result
+    return forecast_result, imfset, imfsumset
 
 def ema(data, alpha): #simple function to give a ema as u want
         emaresult = data[0]
@@ -194,7 +204,7 @@ def ema(data, alpha): #simple function to give a ema as u want
             emaresult = emaresult*(1-alpha)+alpha*data[n+1]
         return emaresult
 
-def dmddiffer(emasets, days_to_keep, days_to_use=15, pointsperday=288):
+def dmddiffer(emasets, days_to_keep, days_to_use=25, pointsperday=288): #get the multiple dmd result
         dmds = []
         for n in np.arange(days_to_use):
             dmddataset = []
@@ -292,16 +302,372 @@ def directions(data):# make only the directions work for forecast results
     data[np.where(data < 0)] = -0.1
     return data
 
-def percents(forecasterror, realerror, forecast): # to see the correction rate of the forecast
-    zeros = np.where(forecast == 0)
-    forecasterror[np.where(forecasterror > 0)] = 1
-    forecasterror[np.where(forecasterror < 0)] = -1
-    realerror[np.where(realerror > 0)] = -1
-    realerror[np.where(realerror < 0)] = 1
-    trial = forecasterror+realerror
-    success = np.array(np.where(trial == 0))
-    rate = len(success[0])/(len(realerror)-len(zeros[0]))
-    return rate, trial
+def percents(forecasterror, realerror, dmdset): # to see the correction rate of the forecast
+    nonzeros = np.where(dmdset > 0.01)[0]
+    forecasterror_nonzeros = forecasterror[nonzeros]
+    realerror_nonzeros = realerror[nonzeros]
+    forecasterror_nonzeros[np.where(forecasterror_nonzeros > 0)] = 1
+    forecasterror_nonzeros[np.where(forecasterror_nonzeros < 0)] = -1
+    realerror_nonzeros[np.where(realerror_nonzeros > 0)] = -1
+    realerror_nonzeros[np.where(realerror_nonzeros < 0)] = 1
+    trial = forecasterror_nonzeros+realerror_nonzeros
+    success = np.array(np.where(abs(trial) == 0))
+    fail = np.array(np.where(abs(trial) == 2))
+    rate = len(success[0])/(len(fail[0])+len(success[0]))
+    action_rate = (len(fail[0])+len(success[0]))/len(trial)
+    return rate, action_rate, trial, nonzeros
+
+def hour(data):
+    days=int(np.floor(len(data)/2))
+    data_new = []
+    for n in np.arange(days):
+        data_new.append(sum(data[n*2:(n+1)*2]))
+    return np.array(data_new)
+def changes(differset):#to show the distribution of next step from the current step.
+    zerodotfive = []
+    one = []
+    onedotfive = []
+    two = []
+    twodotfive = []
+    three = []
+    threedotfive = []
+    four=[]
+    fourdotfive = []
+    fiveplus = []
+    mzerodotfive = []
+    mone = []
+    monedotfive = []
+    mtwo = []
+    mtwodotfive = []
+    mthree = []
+    mthreedotfive = []
+    mfour = []
+    mfourdotfive = []
+    mfiveplus = []
+    nums = len(differset)
+    for n in np.arange(nums):
+        length = len(differset[n])
+        for loop in np.arange(length-1):
+            if differset[n][loop] >= 5:
+                fiveplus.append(differset[n][loop+1])
+            elif differset[n][loop] >= 4.5:
+                fourdotfive.append(differset[n][loop+1])
+            elif differset[n][loop] >= 4:
+                threedotfive.append(differset[n][loop+1])
+            elif differset[n][loop] >= 3.5:
+                three.append(differset[n][loop+1])
+            elif differset[n][loop] >= 3:
+                three.append(differset[n][loop+1])
+            elif differset[n][loop] >= 2.5:
+                twodotfive.append(differset[n][loop+1])
+            elif differset[n][loop] >= 2:
+                two.append(differset[n][loop+1])
+            elif differset[n][loop] >= 1.5:
+                onedotfive.append(differset[n][loop+1])
+            elif differset[n][loop] >= 1:
+                one.append(differset[n][loop+1])
+            else:
+                pass
+    return fiveplus, fourdotfive, four, threedotfive, three, twodotfive, two, onedotfive, one
+
+def bayfit(data): #Bayesian regression - very bad
+    lw = 2
+    x = np.arange(len(data)-1)
+    degree = 3
+    clf_poly = BayesianRidge()
+    clf_poly.fit(np.vander(x, degree), data[x])
+    x_plot = np.arange(len(data))
+    y_mean, y_std = clf_poly.predict(np.vander(x_plot, degree), return_std=True)
+    plt.figure(figsize=(6, 5))
+    plt.errorbar(x_plot, y_mean, y_std, color='navy',
+                 label="Polynomial Bayesian Ridge Regression", linewidth=lw)
+    plt.plot(x_plot, data, color='gold', linewidth=lw,
+             label="Ground Truth")
+    plt.ylabel("Output y")
+    plt.xlabel("Feature X")
+    plt.legend(loc="lower left")
+    plt.show()
+
+def baynetwork(differset, dmdset): # to get the statistic stuff on the last five errors and the last one
+    nonzeros = np.where(dmdset > 0.01)[0]
+    posterior = [0]*12
+    count = [0]*12
+    for loop in nonzeros:
+        stand = 0# np.mean(differset[loop])
+        for n in np.arange(len(differset[loop])-5):
+            upper = np.where(differset[loop][n:n+5] > stand)[0]
+            lower = np.where(differset[loop][n:n+5] < stand)[0]
+            k = len(upper)-len(lower)
+            if differset[loop][n+4] > stand:
+                place = 1
+            else:
+                place = 0
+            count[k + 5+place] = count[k + 5+place] + 1
+            if differset[loop][n+5] > stand:
+                posterior[k+5+place] = posterior[k+5+place]+1
+            elif differset[loop][n+5] < stand:
+                posterior[k+5+place] = posterior[k+5+place]-1
+            else:
+                pass
+    return posterior, count
+
+def bino(baynetworkresult, differset, dmdset):
+    nonzeros = np.where(dmdset > 0.01)[0]
+    forecast = [0]*len(differset)
+    rate = []
+    #stage = 0
+
+    for n in np.arange(len(baynetworkresult[0])):
+        if baynetworkresult[1][n] == 0:
+            rate.append(0)
+        else:
+            p = baynetworkresult[0][n]/baynetworkresult[1][n]
+            rate.append((1.4+p)*p)
+    rate = np.array(rate)
+    rate[np.where(rate > 1)] = 1
+    rate[np.where(rate < -1)] = -1
+    for loop in nonzeros:
+        standard = 0#np.mean(differset[loop])
+        upper = np.where(differset[loop][-5:] > standard)[0]
+        lower = np.where(differset[loop][-5:] < standard)[0]
+        #ma = ema(abs(differset[loop]), 0.5)
+        k = len(upper) - len(lower)
+        if differset[loop][-1] > standard:
+            place = 1
+        else:
+            place = 0
+        prob = rate[k+5+place]
+        if prob > 0:
+            ma = ema(abs(differset[loop][np.where(differset[loop] > standard)]), 0.5)
+            forecast[loop] = prob*ma+standard
+        elif prob < 0:
+            ma = ema(abs(differset[loop][np.where(differset[loop] < standard)]), 0.5)
+            forecast[loop] = prob*ma+standard
+    return forecast
+
+def bayesianstatistic(differset, dmdset): # do the statisitic stuff to see whether count the first 3 and combine the last 2 is better.
+    nonzeros = np.where(dmdset > 0.01)[0]
+    posterior = [0] * 16
+    count = [0] * 16
+    stand = 0# the "0"
+    for loop in nonzeros:
+        for n in np.arange(len(differset[loop])-5):
+            upper = np.where(differset[loop][n:n+3] > stand)[0]
+            #lower = np.where(differset[loop][n:n+3] < stand)[0]
+            k = len(upper)*4
+            if differset[loop][n+3] <0:
+                if differset[loop][n+4] < 0 :
+                    place = 0
+                else:
+                    place = 1
+            else:
+                if differset[loop][n+4] < 0 :
+                    place = 2
+                else:
+                    place = 3
+            count[k + place] = count[k + place] + 1
+            if differset[loop][n+5] > stand:
+                posterior[k+place] = posterior[k+place]+1
+            elif differset[loop][n+5] < stand:
+                posterior[k+place] = posterior[k+place]-1
+            else:
+                pass
+    return posterior, count, np.array(posterior)/np.array(count)
+
+def bsbino(baynetworkresult, differset, dmdset):
+    nonzeros = np.where(dmdset > 0.01)[0]
+    forecast = [0]*len(differset)
+    rate = []
+    #stage = 0
+
+    for n in np.arange(len(baynetworkresult[0])):
+        if baynetworkresult[1][n] == 0:
+            rate.append(0)
+        else:
+            p = baynetworkresult[0][n]/baynetworkresult[1][n]
+            rate.append(p)
+    rate = np.array(rate)
+    rate[np.where(rate > 1)] = 1
+    rate[np.where(rate < -1)] = -1
+    for loop in nonzeros:
+        standard = 0#np.mean(differset[loop])
+        upper = np.where(differset[loop][-5:-2] > standard)[0]
+        # lower = np.where(differset[loop][n:n+3] < stand)[0]
+        k = len(upper) * 4
+        if differset[loop][-2] < 0:
+            if differset[loop][-1] < 0:
+                place = 0
+            else:
+                place = 1
+        else:
+            if differset[loop][-1] < 0:
+                place = 2
+            else:
+                place = 3
+        prob = rate[k+place]
+        if prob > 0:
+            ma = ema(abs(differset[loop][np.where(differset[loop] > standard)]), 0.5)
+            forecast[loop] = prob*ma+standard
+        elif prob < 0:
+            ma = ema(abs(differset[loop][np.where(differset[loop] < standard)]), 0.5)
+            forecast[loop] = prob*ma+standard
+    return forecast
+
+def emddmd(dataset,d,draw=0): #can we do the dmd again? to see whether there are some miracles
+    emd = EMD()
+    imfs = emd(dataset)  # do the EMD
+    nimfs = len(imfs)
+    result = []
+    sumresult = []
+    #firstimf = firstone([imfs[0]])
+    #result.append(firstimf)
+    for n in np.arange(nimfs-1):
+        dmddataset = imfs[n+1]
+        hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=d).fit(dmddataset)
+        hodmd.reconstructed_data.shape
+        hodmd.dmd_time['tend'] = len(imfs[n+1])+1
+        dmdresult = hodmd.reconstructed_data[0].real
+        uppercap = np.max(dmddataset)*1.1
+        lowercap = np.min(dmddataset)*1.1
+        if dmdresult[-2] > uppercap:
+            dmdresult[-2] = uppercap
+        elif dmdresult[-2] < lowercap:
+            dmdresult[-2] = lowercap
+
+        if draw ==1:
+            fig = plt.figure(figsize=(20, 10))
+            plt.plot(np.arange(len(imfs[n+1])), imfs[n+1], '-', label='the practical signal',
+                        color='g')
+            plt.plot(np.arange(len(imfs[n+1])+2), dmdresult, '--', label='DMD output', color='r')
+            plt.show()
+        result.append(dmdresult[-2])
+    sumresult.append(np.sum(result))
+    return sumresult, result
+
+def emddmdp(differset, dmdset):# just try whether dmd can really save me
+    nonzeros = np.where(dmdset > 0.01)[0]
+    forecast = [0] * len(differset)
+    for n in nonzeros:
+        forecast[n] = np.array(emddmd(differset[n], 12)[0])
+    return forecast
+
+def firstone(imfs,draw=0):
+    extrema_upper_index_vector = []  # record, make no sense
+    extrema_lower_index_vector = []
+    forecast_value_vector = []
+    imfsums = []
+    for n in np.arange(1):  ##########################################################################
+        # try to figure out the trend and give prediction
+        # ---------wash the extremas----------------------------------------------------
+        extrema_upper_index = extrema(imfs[n], np.greater_equal)[0]  # max extrema
+        neighbours = []
+        imfsums.append(np.sum(imfs[n]))
+        for i in np.arange(len(extrema_upper_index) - 1):  # clean the indexes which close to each other
+            if extrema_upper_index[i] - extrema_upper_index[i + 1] == -1:
+                neighbours.append(i)
+        extrema_upper_index = np.delete(extrema_upper_index, neighbours)
+        extrema_upper_index = np.delete(extrema_upper_index, np.where((extrema_upper_index == 0) |
+                                                                      (extrema_upper_index == len(imfs[n]) - 1)))
+        neighbours = []
+
+        extrema_lower_index = extrema(imfs[n], np.less_equal)[0]  # min exrema
+        for i in np.arange(len(extrema_lower_index) - 1):  # clean the indexes which close to each other
+            if extrema_lower_index[i] - extrema_lower_index[i + 1] == -1:
+                neighbours.append(i)
+        extrema_lower_index = np.delete(extrema_lower_index, neighbours)
+        extrema_lower_index = np.delete(extrema_lower_index, np.where((extrema_lower_index == 0) |
+                                                                      (extrema_lower_index == len(imfs[n] - 1) - 1)))
+        if draw == 1:
+            extrema_upper_index_vector.append(extrema_upper_index)
+            extrema_lower_index_vector.append(extrema_lower_index)
+
+        # ------------------------ the derivation starts from here---------------------
+
+        # --some basic calculations --------#
+        extrema_upper_value = imfs[n][extrema_upper_index]
+        extrema_lower_value = imfs[n][extrema_lower_index]
+        extremas = np.unique(np.hstack([extrema_upper_index, extrema_lower_index]))
+        if extremas.any():
+            last_extrema = extremas[-1]
+        else:
+            last_extrema = len(imfs[n]) - 1
+        if len(extrema_upper_index) + len(extrema_lower_index) <= 0:  # if there is no real extrema
+            distance = last_extrema  # means that there is no enough extremas to do the calculation
+            amplitude_upper_ema = max(imfs[n])
+            amplitude_lower_ema = min(imfs[n])
+            step = abs(amplitude_upper_ema - amplitude_lower_ema) / distance
+            forecast_value = imfs[n][-1] + step * (imfs[n][-1] - imfs[n][-2]) / abs(
+                (imfs[n][-1] - imfs[n][-2]))  # just extend the tread
+        elif len(extrema_upper_index) + len(extrema_lower_index) == 1:  # if there is only one extrema
+            distance = len(imfs[n]) - last_extrema
+            amplitude_upper_ema = max(imfs[n][last_extrema], imfs[n][-1])
+            amplitude_lower_ema = min(imfs[n][last_extrema], imfs[n][-1])
+            step = abs(amplitude_upper_ema - amplitude_lower_ema) / distance
+            # reference_amplitude = abs(imfs[n][-1]) + 2 * step
+            forecast_value = imfs[n][-1] + step * (imfs[n][-1] - imfs[n][-2]) / abs(
+                (imfs[n][-1] - imfs[n][-2]))  # also, extend is the best way
+        else:  # if there are more than two extremas
+            amplitude_upper_ema = ema(extrema_upper_value, alpha=0.6)  # whether use ema is a good thing here?
+            amplitude_lower_ema = ema(extrema_lower_value, alpha=0.6)  # whether use ema is a good thing here?
+            nextremas = min(len(extrema_lower_index), len(extrema_upper_index))
+            distance_set = abs(extrema_upper_index[-nextremas:] - extrema_lower_index[-nextremas:])
+            distance = ema(distance_set, alpha=0.6)  # here as well, not so sure whether ema is better though
+            step = abs(amplitude_upper_ema - amplitude_lower_ema) / distance
+            reference_amplitude = abs(amplitude_lower_ema) * 0.25 + abs(amplitude_upper_ema) * 0.25 + abs(
+                imfs[n][last_extrema]) * 0.5
+            if imfs[n][-1] * imfs[n][last_extrema] < 0:  # if the last point has already crossed the axis
+                if abs(imfs[n][-1]) >= 0.8 * reference_amplitude and abs(
+                        imfs[n][-1]) + step > 1.3 * reference_amplitude:
+                    forecast_value = imfs[n][-1] + step * (-abs(imfs[n][-1]) / imfs[n][-1])
+                else:
+                    forecast_value = reference_amplitude * (abs(imfs[n][-1]) / imfs[n][-1])
+            else:
+                forecast_value = imfs[n][-1] + step * (imfs[n][-1] - imfs[n][-2]) / abs((imfs[n][-1] - imfs[n][-2]))
+                if abs(forecast_value) >= abs(imfs[n][last_extrema]) * 1.1:
+                    forecast_value = abs(imfs[n][last_extrema]) * 1.1 * (-abs(imfs[n][-1]) / imfs[n][-1])
+    return forecast_value
+#def nbayesian():# see whether there is a possibility to apply the naive bayesian.
+def getfirstone(differset, differ, n,draw=0):#get forecasts for the rest of the imfs and then derive how much the forecast on the first order should be
+    rest_signal = emddmd(differset, 12)
+    fistone = differ[n]-rest_signal[0]
+    if draw==1:
+        emd=EMD()
+        imf_1=emd(differset)[0]
+        fig = plt.figure(figsize=(20, 10))
+        plt.plot(np.arange(len(imf_1)), imf_1, '-', label='the imf',
+                 color='g')
+        plt.scatter(len(imf_1)+1, fistone, marker='o', c='black', s=50)
+        plt.show()
+    return fistone
+
+def baydmd(differset, dmddata):# do dmd on the rest and do bayesian on the first imf.
+    otherresult = emddmdp(differset, dmddata) # do dmd on the rest
+    emd = EMD()
+    nonzeros = np.where(dmddata > 0.01)[0]
+    forecast = [0] * len(differset)
+    imfs = [0]*len(differset)
+    for n in nonzeros:
+        imf_1 = emd(differset[n])[0]
+        imfs[n] = imf_1
+    #do the statistical stuff:
+    stat_result = baynetwork(imfs, dmddata)
+    first_imf_forecast = bino(stat_result, imfs, dmddata)
+    final_forecast = np.array(otherresult)+np.array(first_imf_forecast)
+    return final_forecast
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

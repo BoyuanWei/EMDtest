@@ -16,9 +16,19 @@ from evaluation import gaojier
 from evaluation import datawash
 from evaluation import directions as di
 from evaluation import percents
+from evaluation import hour
 from evaluation import gp
 import termcolor
 from plotcheck import pl
+from evaluation import baynetwork
+from evaluation import bino
+from evaluation import bayesianstatistic as bs
+from evaluation import bsbino as bsb
+from evaluation import emddmd
+from evaluation import emddmdp
+from evaluation import firstone
+from evaluation import getfirstone
+from evaluation import baydmd
 
 path = "/home/bwei/PycharmProjects/data lib/pvtotal.csv"
 #windset = rd(path)
@@ -26,35 +36,36 @@ path = "/home/bwei/PycharmProjects/data lib/pvtotal.csv"
 #realwindset = windset[name]
 pointsperday = 288 # CHANGE HERE FOR DIFFERENT RESOLUTION
 realwindset = readcsv.rd(path)
+#realwindset=hour(realwindset)#############
 windsetoriginal= realwindset
 realwindset.shape = (len(realwindset),)
 #data reading is done
-mvamode = raw_input('which kind of MA? ema or custom?')
-if mvamode == 'ema':
-    def ma(data, days_to_keep, alpha=0.2, points_per_day=288):
-        days_covered = int(np.floor(len(data)/points_per_day))
-        points_covered = days_covered*points_per_day
-        daysdata = []
-        onedaydata = data[len(data)-points_covered:len(data)-points_covered+points_per_day]
-        for loop in np.arange(days_covered-1):
-            onedaydata = onedaydata*(1-alpha)+alpha*data[len(data)-points_covered+points_per_day*(loop+1):
+#mvamode = raw_input('which kind of MA? ema or custom?')
+#if mvamode == 'ema':
+def ma(data, days_to_keep, points_per_day, alpha=0.2 ):
+    days_covered = int(np.floor(len(data)/points_per_day))
+    points_covered = days_covered*points_per_day
+    daysdata = []
+    onedaydata = data[len(data)-points_covered:len(data)-points_covered+points_per_day]
+    for loop in np.arange(days_covered-1):
+        onedaydata = onedaydata*(1-alpha)+alpha*data[len(data)-points_covered+points_per_day*(loop+1):
                                                          len(data)-points_covered+points_per_day*(loop+1)+points_per_day]
-            daysdata.append(onedaydata)
-        return daysdata[-days_to_keep:], daysdata
-else:
-    pass#to be done
+        daysdata.append(onedaydata)
+    return daysdata[-days_to_keep:], daysdata
+#else:
+    #pass#to be done
 
 #moving average definition is done
 days = input('how many days will be generated for forecasting?')
 cut = input('from where the rest will be testing set?<'+str(len(realwindset)))
 madataset = realwindset[:cut]
-maresult = ma(madataset, days)
+maresult = ma(madataset, days, pointsperday)
 dmddataset_org = maresult[0]
 dmddataset = []
 for n in np.arange(len(dmddataset_org)):
     dmddataset.extend(dmddataset_org[n])
 dmddataset = np.array(dmddataset)
-hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=288).fit(dmddataset)
+hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=pointsperday).fit(dmddataset)
 hodmd.reconstructed_data.shape
 hodmd.plot_eigs()
 hodmd.dmd_time['tend'] = (days+1)*pointsperday-1# since it starts from zero
@@ -76,13 +87,13 @@ plt.show()
 
 #-----another pic on without DMD-----
 
-plt.figure(figsize=(20, 10))
+#plt.figure(figsize=(20, 10))
 #plt.plot(hodmd.original_timesteps+cut-days*pointsperday, dmddataset, '.', label='snapshots')
-plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='g')
-plt.vlines(cut, 0, 20, colors="black", linestyles="--")
-plt.plot(cut+np.linspace(1, pointsperday, pointsperday, dtype='int'), dmddataset_org[-1], '--', label='ema simple forecast', color='r')
-plt.legend()
-plt.show()
+#plt.plot(cut+hodmd.dmd_timesteps-days*pointsperday, data_practical, '-', label='the practical signal', color='g')
+#plt.vlines(cut, 0, 20, colors="black", linestyles="--")
+#plt.plot(cut+np.linspace(1, pointsperday, pointsperday, dtype='int'), dmddataset_org[-1], '--', label='ema simple forecast', color='r')
+#plt.legend()
+#plt.show()
 
 #---just some testing pic-----
 #plt.figure(figsize=(15, 5))
@@ -97,32 +108,38 @@ plt.show()
 
 #Start the error evaluation section from here(:
 print(colored('------Error evaluation for with DMD:------', 'green'))
-data_prediction_eva = data_prediction[-pointsperday:]
+data_prediction_dmd = data_prediction[-pointsperday:]
 data_practical_eva = data_practical[-pointsperday:]
-ev_result = ev(data_prediction_eva, data_practical_eva)
+ev_result = ev(data_prediction_dmd, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
 
 #Start the error evaluation section from here(:
 print(colored('------Error evaluation for without DMD:------', 'green'))
-data_prediction_eva = dmddataset_org[-1]
-ev_result = ev(data_prediction_eva, data_practical_eva)
+data_prediction_ema = dmddataset_org[-1]
+ev_result = ev(data_prediction_ema, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
 
 dmd_difference_set = dd(maresult[1], days)
-differset = re(madataset, dmd_difference_set) # calculate the differences between ema results and practical data
+differset = re(madataset, dmd_difference_set, points_per_day=pointsperday) # calculate the differences between ema results and practical data
 differset = datawash(differset)
-debug_flag = 1 # set this to another number if want to fix the error forecast algorithm
-if debug_flag == 1: #rate mode
-    error_forecast = np.array(gaojier(differset))
+debug_flag = 555 # set this to another number if want to fix the error forecast algorithm
+if debug_flag == 2: #rate mode
+    bb = baynetwork(differset, dmddataset_org[-1])
+    error_forecast = np.array(bino(bb, differset, dmddataset_org[-1]))
     realerror = data_practical[-pointsperday:]-data_prediction[-pointsperday:]
-    succ_rate = percents(error_forecast, realerror, data_prediction[-pointsperday:])
+    succ_rate = percents(error_forecast, realerror, dmddataset_org[-1])
     print 'the success rate is: %s' % succ_rate[0]
+    print 'the action rate is: %s' % succ_rate[1]
 
 if debug_flag == 0:
-    error_forecast = np.array(pp(differset)) # get the error forecast
-    error_forecast = di(error_forecast)
+    #error_forecast = np.array(pp(differset)[0]) # get the error forecast
+    #error_forecast = di(error_forecast)
+    #bb = bs(differset, dmddataset_org[-1])
+    #error_forecast = np.array(bsb(bb, differset, dmddataset_org[-1]))
+    error_forecast = emddmdp(differset, dmddataset_org[-1])
+    #error_forecast = baydmd(differset, dmddataset_org[-1])
     fig = plt.figure(figsize=(20, 10))
     plt.plot(hodmd.original_timesteps + cut - days * pointsperday, dmddataset, '.', label='snapshots')
     data_practical = windsetoriginal[cut + hodmd.dmd_timesteps - days * pointsperday]
@@ -138,6 +155,7 @@ if debug_flag == 0:
              color='g')
     plt.plot(cut + hodmd.dmd_timesteps - days * pointsperday, data_prediction, '--', label='DMD output', color='r')
     plt.vlines(cut, 0, 20, colors="black", linestyles="--")
+    plt.title(cut)
     plt.legend()
     plt.show()
 
