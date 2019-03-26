@@ -521,24 +521,24 @@ def emddmd(dataset,d,draw=0): #can we do the dmd again? to see whether there are
     sumresult = []
     #firstimf = firstone([imfs[0]])
     #result.append(firstimf)
-    for n in np.arange(nimfs-1):
-        dmddataset = imfs[n+1]
+    for n in np.arange(nimfs):
+        dmddataset = imfs[n]
         hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=d).fit(dmddataset)
         hodmd.reconstructed_data.shape
-        hodmd.dmd_time['tend'] = len(imfs[n+1])+1
+        hodmd.dmd_time['tend'] = len(imfs[n])+24
         dmdresult = hodmd.reconstructed_data[0].real
-        uppercap = np.max(dmddataset)*1.1
-        lowercap = np.min(dmddataset)*1.1
-        if dmdresult[-2] > uppercap:
-            dmdresult[-2] = uppercap
-        elif dmdresult[-2] < lowercap:
-            dmdresult[-2] = lowercap
+        #uppercap = np.max(dmddataset)*1.1
+        #lowercap = np.min(dmddataset)*1.1
+        #if dmdresult[-2] > uppercap:
+           # dmdresult[-2] = uppercap
+        #elif dmdresult[-2] < lowercap:
+            #dmdresult[-2] = lowercap
 
         if draw ==1:
             fig = plt.figure(figsize=(20, 10))
-            plt.plot(np.arange(len(imfs[n+1])), imfs[n+1], '-', label='the practical signal',
+            plt.plot(np.arange(len(imfs[n])), imfs[n], '-', label='the practical signal',
                         color='g')
-            plt.plot(np.arange(len(imfs[n+1])+2), dmdresult, '--', label='DMD output', color='r')
+            plt.plot(np.arange(len(imfs[n])+25), dmdresult, '--', label='DMD output', color='r')
             plt.show()
         result.append(dmdresult[-2])
     sumresult.append(np.sum(result))

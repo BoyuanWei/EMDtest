@@ -30,11 +30,11 @@ from evaluation import firstone
 from evaluation import getfirstone
 from evaluation import baydmd
 
-path = "/home/bwei/PycharmProjects/data lib/pvtotal.csv"
+path = "/home/bwei/PycharmProjects/data lib/PVhourly6months.csv"
 #windset = rd(path)
 #name = raw_input('the name of data set?')
 #realwindset = windset[name]
-pointsperday = 288 # CHANGE HERE FOR DIFFERENT RESOLUTION
+pointsperday = 24 # CHANGE HERE FOR DIFFERENT RESOLUTION
 realwindset = readcsv.rd(path)
 #realwindset=hour(realwindset)#############
 windsetoriginal= realwindset
