@@ -655,6 +655,33 @@ def baydmd(differset, dmddata):# do dmd on the rest and do bayesian on the first
     final_forecast = np.array(otherresult)+np.array(first_imf_forecast)
     return final_forecast
 
+def fields(data, max_value = 1600, numbers_of_fields=5):#see which field the current generation is in (cloudy, sunny, and so on)
+    # data is the data need to be analyzed, max_value is the maximum of the fields, numbers_of _fields is how many
+    # feilds are needed.
+    sum_data = np.sum(data)
+    field_size = max_value/numbers_of_fields
+    stage = sum_data/field_size # divide the field size then we know which stage the data is in
+    return stage
+
+def zeromask(data): # to mask all the negative forecast and only take the widest positive part.
+    zeros = np.where(data <= 0)[0]
+    len_zeros = len(zeros)
+    max_gap_pos = 0
+    max_gap = 0
+    for n in np.arange(len_zeros-1):
+        gap = zeros[n+1]-zeros[n]
+        if gap >= max_gap:
+            max_gap = gap
+            max_gap_pos = n
+        else:
+            pass
+    data[:zeros[max_gap_pos]] = 0
+    data[zeros[max_gap_pos+1]:] = 0
+    return data
+
+
+
+
 
 
 

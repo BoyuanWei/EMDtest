@@ -8,12 +8,18 @@ def rd(dataname, datawashflag=1):
     df[df.data < 0] = 0 #clean the negative data
     dataarray = df.data[:-1]
     dataarray = np.array(dataarray)
-    dataraay_mean = np.mean(dataarray)
+    dataraay_mean = np.nanmean(dataarray)
     nanindex = np.where(np.isnan(dataarray))
-    abnormal_index = np.where(dataarray > dataraay_mean*100)
+    abnormal_index = np.where(dataarray > dataraay_mean*50)[0]
     if datawashflag == 1: # wash the abnormal data
         for n in abnormal_index:
-            dataarray[n] = np.mean([dataarray[n-1], dataarray[n+1]])
+            if dataarray[n+1] <= dataraay_mean*50 and dataarray[n-1] <= dataraay_mean*50:
+                dataarray[n] = np.mean([dataarray[n-1], dataarray[n+1]])
+                if dataarray[n] >= dataraay_mean*50:# if it is still abnormal after averaging, set it to zero
+                    dataarray[n] = 0
+            else:
+                dataarray[n] = 0
+
 
     for n in nanindex[0]:
         frontier_flag = 0
@@ -34,4 +40,6 @@ def rd(dataname, datawashflag=1):
             dataarray[n] = 0
         else:
             dataarray[n] = np.mean([dataarray[nanpos_upper], dataarray[nanpos_lower]])
+            if dataarray[n] >= dataraay_mean*50: # if the average gives a wrong result, set it to zero.
+                dataarray[n] = 0
     return dataarray

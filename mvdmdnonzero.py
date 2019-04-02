@@ -29,8 +29,13 @@ from evaluation import emddmdp
 from evaluation import firstone
 from evaluation import getfirstone
 from evaluation import baydmd
+from evaluation import fields
+from evaluation import zeromask
 
-path = "/home/bwei/PycharmProjects/data lib/PVdata5min6month.csv"
+path = "/home/bwei/PycharmProjects/data lib/pv_2018.csv"
+
+
+
 #windset = rd(path)
 #name = raw_input('the name of data set?')
 #realwindset = windset[name]
@@ -40,13 +45,31 @@ realwindset = readcsv.rd(path)
 windsetoriginal= realwindset
 realwindset.shape = (len(realwindset),)
 #--------------------swithes---------------
-moving_average_flag = 0  # ------------------CHANGE WHETHER THE MOVING AVERAGE IS NEEDED HERE.--------------
+moving_average_flag = 1  # ------------------CHANGE WHETHER THE MOVING AVERAGE IS NEEDED HERE.--------------
 zero_zone_cut = 1 # ------------------CHANGE WHETHER THE ZERO ZONE CUT IS NEEDED HERE.--------------
+stages_reference = 1# ------------------CHANGE WHETHER USE THE DATA FROM SEVERAL YEARS AGO AS REFERENCE.--------------
+zero_mask_flag = 1#-----------------------CHANGE WHETHER ZEROS ARE MASKED-----------------------------
+combination = 1 #--------CHANGE WHETHER USE THE COMBINATION AMONG WITH MV, WITHOUT MV, SEVERAL YEARS AGO--------
+
+
+
+#--------------- read the old data sets-------------
+if stages_reference == 1:
+    path_2016= "/home/bwei/PycharmProjects/data lib/pv_2016.csv"
+    dataset_2016 = readcsv.rd(path_2016)
+    #dataset_2016[np.where(dataset_2016>50)]=0
+#read_2017:
+    path_2017= "/home/bwei/PycharmProjects/data lib/pv_2017.csv"
+    dataset_2017 = readcsv.rd(path_2017)
+    #dataset_2017[np.where(dataset_2017>50)]=0
+#read_2018:
+
+    path_2018= "/home/bwei/PycharmProjects/data lib/pv_2018.csv"
+    dataset_2018 = readcsv.rd(path_2018)
 
 
 #data reading is done
-#mvamode = raw_input('which kind of MA? ema or custom?')
-#if mvamode == 'ema':
+
 def ma(data, days_to_keep, points_per_day, alpha=0.2 ):
     days_covered = int(np.floor(len(data)/points_per_day))
     points_covered = days_covered*points_per_day
@@ -76,6 +99,10 @@ cut = cut*pointsperday
 dmddataset = realwindset[cut-days*pointsperday:cut]
 
 #------- moving average process------------------
+if combination == 1:
+    moving_average_flag = 1 # force moving average flag on
+    dmddataset_org = dmddataset # save the original dataset for later use
+
 if moving_average_flag == 1:
     day_ahead = 10
     data_for_ma = realwindset[cut-days*pointsperday*day_ahead:cut]
@@ -93,14 +120,61 @@ if zero_zone_cut == 1:
     for n in np.arange(days-1):
         zero_data_index = np.append(zero_data_index, zero_data_index+(n+1)*pointsperday)
     dmddataset = np.delete(dmddataset, zero_data_index)
+    if 'dmddataset_org' in locals().keys():
+        dmddataset_org = np.delete(dmddataset_org, zero_data_index)
 
 #-----core prediction---------------#
-hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=len(dmddataset)/days).fit(dmddataset)
-hodmd.reconstructed_data.shape
-hodmd.plot_eigs()
-hodmd.dmd_time['tend'] = len(dmddataset)/days*(days+1)-1# since it starts from zero
-dmd_output = hodmd.reconstructed_data[0].real
-dmd_prediction = dmd_output[-len(dmddataset)/days:]
+def predicition(dmddataset, days):
+    hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=len(dmddataset)/days).fit(dmddataset)
+    hodmd.reconstructed_data.shape
+    hodmd.plot_eigs()
+    hodmd.dmd_time['tend'] = len(dmddataset)/days*(days+1)-1# since it starts from zero
+    dmd_output = hodmd.reconstructed_data[0].real
+    dmd_prediction = dmd_output[-len(dmddataset)/days:]
+    return dmd_prediction, dmd_output
+
+if combination == 1: # do the main work: prediction
+    dmd_prediction_main = predicition(dmddataset, days)
+    dmd_output = dmd_prediction_main[1] # just give the dmdoutput some thing to be draw
+    dmd_prediction_short = predicition(dmddataset_org[-len(dmddataset_org)/days*2:], 2)[0]
+    if zero_mask_flag == 1:
+        dmd_prediction_short = zeromask(dmd_prediction_short)
+    dmd_prediction = dmd_prediction_main[0]
+else:
+    dmd_result = predicition(dmddataset, days)
+    dmd_prediction = dmd_result[0]
+    dmd_output = dmd_result[1]
+
+
+#----the place to implement stages correction
+if stages_reference == 1:
+    stage_2016 = fields(dataset_2016[cut:cut+pointsperday])
+    stage_2017 = fields(dataset_2017[cut:cut+pointsperday])
+    stage_prediction = fields(dmd_prediction)
+    if combination == 1:
+        stage_short_prediction = fields(dmd_prediction_short)
+
+if combination == 1:
+    #see the discords of different years from 2018:
+    discord_2016 = stage_prediction - stage_2016
+    discord_2017 = stage_prediction - stage_2017
+    if abs(discord_2017) >= 0.5 and abs(discord_2017*0.65+discord_2016*0.35) >=0.5:
+        dmd_prediction_short_nominal = abs(dmd_prediction_short/np.max(abs(dmd_prediction_short)))
+        dmd_prediction = dmd_prediction - (discord_2017*0.65+discord_2016*0.35)*dmd_prediction_short_nominal
+        new_state = fields(dmd_prediction)
+        correction_flag = 1
+    if stage_prediction >= np.max([stage_2017, stage_2016, stage_short_prediction]) or stage_prediction <= np.min([
+        stage_2017, stage_2016, stage_short_prediction]):
+        discord_short_2016 = stage_short_prediction-stage_2016
+        discord_short_2017 = stage_short_prediction-stage_2017
+        if abs(discord_short_2016+discord_short_2017)<=0.4:
+            correction_flag = 2 # replaced
+            dmd_prediction_short[np.where(dmd_prediction_short<0)]=0
+            dmd_prediction = dmd_prediction_short
+            new_state = fields(dmd_prediction)
+
+
+
 
 if zero_zone_cut == 1 :
     full_prediction_one_day = non2full(dmd_prediction, zero_data_index_org[0], pointsperday)
@@ -127,7 +201,16 @@ data_practical_eva = realwindset[cut:(cut+pointsperday)]
 ev_result = ev(data_prediction_dmd, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
-
+print "stage_2016:", stage_2016
+print 'stage_2017:', stage_2017
+print 'stage_prediction:', stage_prediction
+if 'correction_flag' in locals().keys():
+    if correction_flag == 1:
+        print(colored('CORRECTED', 'green'))
+        print 'new stage is:', new_state
+    if correction_flag == 2:
+        print(colored('REPLACED', 'green'))
+        print 'new stage is:', new_state
 
 
 

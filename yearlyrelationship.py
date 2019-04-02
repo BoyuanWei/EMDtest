@@ -36,7 +36,28 @@ differ_1 = sum_2017-sum_2016
 differ_2 = sum_2018-sum_2017
 differ_3 = sum_2018-sum_2016
 
+sections = 5 # see how many sections
+
+#devide the sections
+range_sections = sum_2016.max()/sections
+
 pl(differ_1)
 pl(differ_2)
 pl(differ_3)
 
+field_2016 = np.floor(sum_2016/range_sections)
+field_2017 = np.floor(sum_2017/range_sections)
+field_2018 = np.floor(sum_2018/range_sections)
+
+field_differ_1 = np.abs(field_2016-field_2017)
+field_differ_2 = np.abs(field_2017-field_2018)
+field_differ_3 = np.abs(field_2016-field_2018)
+
+relevance_ratio_1 = len(np.where(field_differ_1<=1)[0])/1.00/len(field_differ_1)
+print ('The relevance ratio between 2016 and 2017 is'), relevance_ratio_1
+
+relevance_ratio_2 = len(np.where(field_differ_2<=1)[0])/1.00/len(field_differ_2)
+print ('The relevance ratio between 2017 and 2018 is'), relevance_ratio_2
+
+relevance_ratio_3 = len(np.where(field_differ_3<=1)[0])/1.00/len(field_differ_3)
+print ('The relevance ratio between 2016 and 2018 is'), relevance_ratio_3
