@@ -42,3 +42,22 @@ else:
     else:
         forecast_value = imfs[n][-1] + step * (imfs[n][-1] - imfs[n][-2]) / abs(
             (imfs[n][-1] - imfs[n][-2]))  # continue with the trend
+
+
+
+
+
+    if abs(discord_2017) >= 0.5 and abs(discord_2017*0.65+discord_2016*0.35) >=0.5:
+        dmd_prediction_short_nominal = abs(dmd_prediction_short/np.max(abs(dmd_prediction_short)))
+        dmd_prediction = dmd_prediction - (discord_2017*0.65+discord_2016*0.35)*dmd_prediction_short_nominal
+        new_state = fields(dmd_prediction)
+        correction_flag = 1
+    if stage_prediction >= np.max([stage_2017, stage_2016, stage_short_prediction]) or stage_prediction <= np.min([
+        stage_2017, stage_2016, stage_short_prediction]):
+        discord_short_2016 = stage_short_prediction-stage_2016
+        discord_short_2017 = stage_short_prediction-stage_2017
+        if abs(discord_short_2016+discord_short_2017)<=0.4:
+            correction_flag = 2 # replaced
+            dmd_prediction_short[np.where(dmd_prediction_short<0)]=0
+            dmd_prediction = dmd_prediction_short
+            new_state = fields(dmd_prediction)

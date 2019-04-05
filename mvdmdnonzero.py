@@ -7,32 +7,12 @@ import numpy as np
 import readcsv
 from math import sqrt
 from evaluation import ev as ev
-from evaluation import randomextract as re
-from evaluation import pointprediction as pp
-from evaluation import dmddiffer as dd
-from evaluation import egp
-from evaluation import gp_prediction as gpp
-from evaluation import gaojier
-from evaluation import datawash
-from evaluation import directions as di
-from evaluation import percents
-from evaluation import hour
-from evaluation import gp
-import termcolor
 from plotcheck import pl
-from evaluation import baynetwork
-from evaluation import bino
-from evaluation import bayesianstatistic as bs
-from evaluation import bsbino as bsb
-from evaluation import emddmd
-from evaluation import emddmdp
-from evaluation import firstone
-from evaluation import getfirstone
-from evaluation import baydmd
+
+import termcolor
+
 from evaluation import fields
 from evaluation import zeromask
-
-path = "/home/bwei/PycharmProjects/data lib/pv_2018.csv"
 
 
 
@@ -40,13 +20,9 @@ path = "/home/bwei/PycharmProjects/data lib/pv_2018.csv"
 #name = raw_input('the name of data set?')
 #realwindset = windset[name]
 pointsperday = 288 # CHANGE HERE FOR DIFFERENT RESOLUTION
-realwindset = readcsv.rd(path)
-#realwindset=hour(realwindset)#############
-windsetoriginal= realwindset
-realwindset.shape = (len(realwindset),)
 #--------------------swithes---------------
-moving_average_flag = 1  # ------------------CHANGE WHETHER THE MOVING AVERAGE IS NEEDED HERE.--------------
-zero_zone_cut = 1 # ------------------CHANGE WHETHER THE ZERO ZONE CUT IS NEEDED HERE.--------------
+moving_average_flag = 0  # ------------------CHANGE WHETHER THE MOVING AVERAGE IS NEEDED HERE.--------------
+zero_zone_cut = 1# ------------------CHANGE WHETHER THE ZERO ZONE CUT IS NEEDED HERE.--------------
 stages_reference = 1# ------------------CHANGE WHETHER USE THE DATA FROM SEVERAL YEARS AGO AS REFERENCE.--------------
 zero_mask_flag = 1#-----------------------CHANGE WHETHER ZEROS ARE MASKED-----------------------------
 combination = 1 #--------CHANGE WHETHER USE THE COMBINATION AMONG WITH MV, WITHOUT MV, SEVERAL YEARS AGO--------
@@ -55,22 +31,25 @@ combination = 1 #--------CHANGE WHETHER USE THE COMBINATION AMONG WITH MV, WITHO
 
 #--------------- read the old data sets-------------
 if stages_reference == 1:
-    path_2016= "/home/bwei/PycharmProjects/data lib/pv_2016.csv"
+    path_2016= "/home/bwei/PycharmProjects/data lib/PV2016_apr.csv"
     dataset_2016 = readcsv.rd(path_2016)
     #dataset_2016[np.where(dataset_2016>50)]=0
 #read_2017:
-    path_2017= "/home/bwei/PycharmProjects/data lib/pv_2017.csv"
+    path_2017= "/home/bwei/PycharmProjects/data lib/PV2017_apr.csv"
     dataset_2017 = readcsv.rd(path_2017)
     #dataset_2017[np.where(dataset_2017>50)]=0
 #read_2018:
 
-    path_2018= "/home/bwei/PycharmProjects/data lib/pv_2018.csv"
+    path_2018= "/home/bwei/PycharmProjects/data lib/PV2018_apr.csv"
     dataset_2018 = readcsv.rd(path_2018)
-
+realwindset = dataset_2018
+#realwindset=hour(realwindset)#############
+windsetoriginal= realwindset
+realwindset.shape = (len(realwindset),)
 
 #data reading is done
 
-def ma(data, days_to_keep, points_per_day, alpha=0.2 ):
+def ma(data, days_to_keep, points_per_day, alpha=0.25 ):
     days_covered = int(np.floor(len(data)/points_per_day))
     points_covered = days_covered*points_per_day
     daysdata = []
@@ -92,6 +71,17 @@ def non2full(dmd_prediction, zero_data_index, pointsperday):
             position_flag = position_flag+1
     return full_prediction_one_day
 
+#-----core prediction---------------#
+def predicition(dmddataset, days):
+    hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=len(dmddataset)/days).fit(dmddataset)
+    hodmd.reconstructed_data.shape
+    hodmd.plot_eigs()
+    hodmd.dmd_time['tend'] = len(dmddataset)/days*(days+1)-1# since it starts from zero
+    dmd_output = hodmd.reconstructed_data[0].real
+    dmd_prediction = dmd_output[-len(dmddataset)/days:]
+    return dmd_prediction, dmd_output
+
+
 days = input('how many days will be generated for forecasting?')
 cut = input('from which day the rest will be testing set?<'+str(len(realwindset)/pointsperday))
 
@@ -105,7 +95,7 @@ if combination == 1:
 
 if moving_average_flag == 1:
     day_ahead = 10
-    data_for_ma = realwindset[cut-days*pointsperday*day_ahead:cut]
+    data_for_ma = realwindset[cut-pointsperday*day_ahead:cut]
     moving_average_set = ma(data_for_ma, days, pointsperday)[0]
     dmddataset = []
     for n in np.arange(len(moving_average_set)):
@@ -114,7 +104,9 @@ if moving_average_flag == 1:
 
 #--------clean the zero zone---------
 if zero_zone_cut == 1:
-    dmddataset_ma = ma(dmddataset, days, pointsperday)[0][-1]
+    day_ahead = 10
+    data_for_ma = realwindset[cut - pointsperday * day_ahead:cut]
+    dmddataset_ma = ma(data_for_ma, days, pointsperday)[0][-1]
     zero_data_index = np.where(dmddataset_ma == 0)
     zero_data_index_org = zero_data_index
     for n in np.arange(days-1):
@@ -123,56 +115,84 @@ if zero_zone_cut == 1:
     if 'dmddataset_org' in locals().keys():
         dmddataset_org = np.delete(dmddataset_org, zero_data_index)
 
-#-----core prediction---------------#
-def predicition(dmddataset, days):
-    hodmd = HODMD(svd_rank=0, exact=True, opt=True, d=len(dmddataset)/days).fit(dmddataset)
-    hodmd.reconstructed_data.shape
-    hodmd.plot_eigs()
-    hodmd.dmd_time['tend'] = len(dmddataset)/days*(days+1)-1# since it starts from zero
-    dmd_output = hodmd.reconstructed_data[0].real
-    dmd_prediction = dmd_output[-len(dmddataset)/days:]
-    return dmd_prediction, dmd_output
 
 if combination == 1: # do the main work: prediction
     dmd_prediction_main = predicition(dmddataset, days)
     dmd_output = dmd_prediction_main[1] # just give the dmdoutput some thing to be draw
-    dmd_prediction_short = predicition(dmddataset_org[-len(dmddataset_org)/days*2:], 2)[0]
+    dmd_short = predicition(dmddataset_org[-len(dmddataset_org)/days*3:], 3)
+    dmd_prediction_short = dmd_short[0]
+    # Check whether the short prediction is trustworthy
+    dmd_short_lastday = dmd_short[1][-len(dmd_prediction_short)*2:-len(dmd_prediction_short)]
+    dmddataset_org_lastday = dmddataset_org[-len(dmddataset_org)/days:]
+    dmd_short_lastday_stage = fields(dmd_short_lastday)
+    dmddataset_org_lastday_stage = fields(dmddataset_org_lastday)
+    if abs(dmd_short_lastday_stage - dmddataset_org_lastday_stage) < 1:
+        short_trustworthy_flag = 1
+    else:
+        short_trustworthy_flag = 0
+        print(colored('Short dynamic capture failed!', 'green'))
     if zero_mask_flag == 1:
-        dmd_prediction_short = zeromask(dmd_prediction_short)
+        dmd_prediction_short[np.where(dmd_prediction_short < 0)] = 0
     dmd_prediction = dmd_prediction_main[0]
 else:
     dmd_result = predicition(dmddataset, days)
     dmd_prediction = dmd_result[0]
     dmd_output = dmd_result[1]
+    if zero_mask_flag == 1:
+        dmd_prediction[np.where(dmd_prediction < 0)] = 0
 
 
 #----the place to implement stages correction
 if stages_reference == 1:
     stage_2016 = fields(dataset_2016[cut:cut+pointsperday])
     stage_2017 = fields(dataset_2017[cut:cut+pointsperday])
+    dmd_prediction[np.where(dmd_prediction < 0)] = 0  # remove the negative forcast
     stage_prediction = fields(dmd_prediction)
+    stage_practical = fields(realwindset[cut:cut+pointsperday])
     if combination == 1:
         stage_short_prediction = fields(dmd_prediction_short)
 
 if combination == 1:
-    #see the discords of different years from 2018:
-    discord_2016 = stage_prediction - stage_2016
-    discord_2017 = stage_prediction - stage_2017
-    if abs(discord_2017) >= 0.5 and abs(discord_2017*0.65+discord_2016*0.35) >=0.5:
-        dmd_prediction_short_nominal = abs(dmd_prediction_short/np.max(abs(dmd_prediction_short)))
-        dmd_prediction = dmd_prediction - (discord_2017*0.65+discord_2016*0.35)*dmd_prediction_short_nominal
-        new_state = fields(dmd_prediction)
-        correction_flag = 1
-    if stage_prediction >= np.max([stage_2017, stage_2016, stage_short_prediction]) or stage_prediction <= np.min([
-        stage_2017, stage_2016, stage_short_prediction]):
-        discord_short_2016 = stage_short_prediction-stage_2016
-        discord_short_2017 = stage_short_prediction-stage_2017
-        if abs(discord_short_2016+discord_short_2017)<=0.4:
-            correction_flag = 2 # replaced
-            dmd_prediction_short[np.where(dmd_prediction_short<0)]=0
-            dmd_prediction = dmd_prediction_short
-            new_state = fields(dmd_prediction)
 
+    #opnions:
+    opinion_yearly = stage_2017*0.65+stage_2016*0.35 # the opinion from yearly correlation
+    opinion_short = stage_short_prediction # the opinion from shortly forecast
+    #corrections
+    if short_trustworthy_flag == 1 and abs(opinion_yearly-opinion_short) >= 1:
+        stage_correction = np.floor((opinion_short-opinion_yearly)/abs(opinion_short-opinion_yearly)) # how the stage should be corrected
+        suggested_stage = stage_correction+np.floor(opinion_yearly)
+        correction_direction = np.floor((suggested_stage-stage_prediction)/abs(suggested_stage-stage_prediction))
+        correction_flag = 1 # set the correlation flag
+        dmd_prediction_short_nominal = abs(dmd_prediction_short / np.max(abs(dmd_prediction_short))) # nominalize
+        new_stage = fields(dmd_prediction)
+        while np.floor(new_stage) != suggested_stage:
+            dmd_prediction = dmd_prediction + dmd_prediction_short_nominal*correction_direction
+            dmd_prediction[np.where(dmd_prediction < 0)] = 0
+            new_stage = fields(dmd_prediction)
+    elif short_trustworthy_flag == 1:
+        if (stage_prediction-opinion_yearly)*(stage_prediction-opinion_short) < 0:
+            pass
+        else:
+            correction_flag = 2
+            correction_direction = np.floor((opinion_short - stage_prediction) / abs(opinion_short - stage_prediction))
+            dmd_prediction_short_nominal = abs(dmd_prediction_short / np.max(abs(dmd_prediction_short)))  # nominalize
+            new_stage = stage_prediction
+            while (new_stage-opinion_yearly)*(new_stage-opinion_short)>0:
+                dmd_prediction = dmd_prediction + dmd_prediction_short_nominal * correction_direction
+                dmd_prediction[np.where(dmd_prediction < 0)] = 0 #negative proof
+                new_stage = fields(dmd_prediction)
+                if abs(opinion_yearly-opinion_short) < 0.2:
+                    if abs(new_stage-opinion_short) < 0.2 or abs(new_stage-opinion_yearly) < 0.2:
+                        break
+    else:
+        if abs(stage_prediction-opinion_yearly) >= 1:
+            correction_flag = 3
+            stage_correction = np.floor((opinion_yearly - stage_prediction) / abs(opinion_yearly - stage_prediction))
+            new_stage = stage_prediction
+            while abs(new_stage-opinion_yearly) >= 1:
+                dmd_prediction = dmd_prediction*(1+0.05*stage_correction)
+                dmd_prediction[np.where(dmd_prediction < 0)] = 0  # negative proof
+                new_stage = fields(dmd_prediction)
 
 
 
@@ -201,16 +221,25 @@ data_practical_eva = realwindset[cut:(cut+pointsperday)]
 ev_result = ev(data_prediction_dmd, data_practical_eva)
 for key in ev_result:
     print '%s: %s' % (key, ev_result[key])
+print 'NMAE: ', ev_result['MAE']/np.max(dataset_2018)*100,'%'
+print(colored('---other parameters------', 'green'))
 print "stage_2016:", stage_2016
 print 'stage_2017:', stage_2017
 print 'stage_prediction:', stage_prediction
+print 'stage_practical', stage_practical
+if combination == 1:
+    print "short forecast is:", opinion_short
+    print 'final yearly stage is:', opinion_yearly
 if 'correction_flag' in locals().keys():
     if correction_flag == 1:
-        print(colored('CORRECTED', 'green'))
-        print 'new stage is:', new_state
+        print(colored('CORRECTED, yearly is so different from short', 'green'))
+        print 'new stage is:', new_stage
     if correction_flag == 2:
-        print(colored('REPLACED', 'green'))
-        print 'new stage is:', new_state
+        print(colored('CORRECTED, out of yearly and short range', 'green'))
+        print 'new stage is:', new_stage
+    if correction_flag == 3:
+        print(colored('CORRECTED, so different from yearly', 'green'))
+        print 'new stage is:', new_stage
 
 
 

@@ -655,7 +655,7 @@ def baydmd(differset, dmddata):# do dmd on the rest and do bayesian on the first
     final_forecast = np.array(otherresult)+np.array(first_imf_forecast)
     return final_forecast
 
-def fields(data, max_value = 1600, numbers_of_fields=5):#see which field the current generation is in (cloudy, sunny, and so on)
+def fields(data, max_value = 1600, numbers_of_fields=6):#see which field the current generation is in (cloudy, sunny, and so on)
     # data is the data need to be analyzed, max_value is the maximum of the fields, numbers_of _fields is how many
     # feilds are needed.
     sum_data = np.sum(data)
